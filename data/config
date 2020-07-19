@@ -1,0 +1,11 @@
+{
+	hostname: "stepper",
+	wifi: {
+		ssid: "your_ssid",
+		pass: "your_passpord"
+	},
+	auth: {
+		user: "admin",
+		pass: "12345"
+	}
+}
