@@ -14,10 +14,6 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-#define ARDUINOJSON_ENABLE_STD_STRING 1
-
-#include <string>
-
 #include <ArduinoJson.h>
 #include <uTimerLib.h>
 #include <CheapStepper.h>
@@ -32,17 +28,17 @@
 bool restart = false;
 
 typedef struct {
-	std::string ssid;
-  	std::string pass;
+	String ssid;
+  	String pass;
 } wifiConfig;
 
 typedef struct {
-	std::string user;
-	std::string pass;
+	String user;
+	String pass;
 } authConfig;
 
 typedef struct {
-  std::string hostname;
+  String hostname;
   wifiConfig wifi;
   authConfig auth;
 } Config;
@@ -52,14 +48,6 @@ typedef struct {
 Config config;
 AsyncWebServer server(80);
 CheapStepper stepper(14,12,13,15);
-
-void convert_string(std::string &output, String input) {
-	size_t len = input.length();
-	output.reserve(len);
-	for (size_t i = 0; i < len; i++) {
-		output[i] = input.charAt(i);
-	}
-}
 
 void stepper_run() {
 	stepper.run();
@@ -83,11 +71,11 @@ void loadConfiguration() {
 	JsonObject obj = doc.as<JsonObject>();
 
 	// Copy values from the JsonDocument to the Config
-	config.hostname  = obj["hostname"].as<std::string>();
-	config.wifi.ssid = obj["wifi"]["ssid"].as<std::string>();
-	config.wifi.pass = obj["wifi"]["pass"].as<std::string>();
-	config.auth.user = obj["auth"]["user"].as<std::string>();
-	config.auth.pass = obj["auth"]["pass"].as<std::string>();
+	config.hostname  = obj["hostname"].as<String>();
+	config.wifi.ssid = obj["wifi"]["ssid"].as<String>();
+	config.wifi.pass = obj["wifi"]["pass"].as<String>();
+	config.auth.user = obj["auth"]["user"].as<String>();
+	config.auth.pass = obj["auth"]["pass"].as<String>();
 
 	// Close the file (Curiously, File's destructor doesn't close the file)
 	f.close();
@@ -302,17 +290,15 @@ void setup(){
 		String result = "Fail";
 		String error_msg;
 
-		if (!request->hasArg("ssid")) {
+		if (!request->hasParam("ssid")) {
 			error_msg = "ssid not filled out.";
-		} else if (!request->hasArg("pass")) {
+		} else if (!request->hasParam("pass")) {
 			error_msg = "password not filled out.";
 		} else {
-			String ssid = request->arg("ssid");
-			config.wifi.ssid.reserve(ssid.length());
-			for (int i = 0; i < ssid.length(); i++) config.wifi.ssid[i] = ssid.charAt(i);
-			convert_string(config.wifi.ssid, request->arg("ssid"));
-			convert_string(config.wifi.pass, request->arg("pass"));
-//			saveConfiguration();
+			result = "Ok";
+			config.wifi.ssid = request->getParam("ssid")->value();
+			config.wifi.pass = request->getParam("pass")->value();
+			saveConfiguration();
 		}
 		
 		request->send(200, "application/json", "{\"result\"=\"" + result + "\",\"error\"=\"" + error_msg + "\"}");
