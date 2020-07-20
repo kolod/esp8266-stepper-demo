@@ -242,75 +242,75 @@ void setup(){
 	// First request will return 0 results unless you start scan from somewhere else (loop/setup)
 	// Do not request more often than 3-5 seconds
 	server.on("/scan", HTTP_GET, [](AsyncWebServerRequest *request){
+		
 		if(!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
 			return request->requestAuthentication();
+
+		StaticJsonDocument<200> doc;
 			
-		String json = "[";
 		int n = WiFi.scanComplete();
 		if (n == -2) {
 			WiFi.scanNetworks(true);
-		} else if (n) {
-			for (int i = 0; i < n; ++i){
-				if (i) json += ",";
-				json += "{\"rssi\":"    + String(WiFi.RSSI(i));
-				json += ",\"ssid\":\""  + WiFi.SSID(i)     + "\"";
-				json += ",\"bssid\":\"" + WiFi.BSSIDstr(i) + "\"";
-				json += ",\"channel\":" + String(WiFi.channel(i));
-				json += ",\"secure\":"  + String(WiFi.encryptionType(i));
-				json += ",\"hidden\":"  + String(WiFi.isHidden(i)?"true":"false");
-				json += "}";
+		} else if (n > 0) {
+			JsonArray arr = doc.createNestedArray();
+			for (int i = 0; i < n; ++i) {
+				JsonObject obj = arr.createNestedObject();
+				obj["ssid"]    = WiFi.SSID(i);
+				obj["bssid"]   = WiFi.BSSIDstr(i);
+				obj["rssi"]    = WiFi.RSSI(i);
+				obj["channel"] = WiFi.channel(i);
+				obj["secure"]  = WiFi.encryptionType(i);
+				obj["hidden"]  = WiFi.isHidden(i);
 			}
 			WiFi.scanDelete();
 			if (WiFi.scanComplete() == -2) {
 				WiFi.scanNetworks(true);
 			}
 		}
-		json += "]";
+
+		String json;
+		serializeJson(doc, json);
 		request->send(200, "application/json", json);
 	});
 
 	// Set wifi ssid & password
 	server.on("/save", HTTP_GET, [](AsyncWebServerRequest *request){
+		
 		if(!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
 			return request->requestAuthentication();
-
-		Serial.println("save");
-		int params = request->params();
-		for(int i=0;i<params;i++){
-  			AsyncWebParameter* p = request->getParam(i);
-  			if(p->isFile()){ //p->isPost() is also true
-    			Serial.printf("FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
-  			} else if(p->isPost()){
-    			Serial.printf("POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
-  			} else {
-    			Serial.printf("GET[%s]: %s\n", p->name().c_str(), p->value().c_str());
-  			}
-		}
 			
-		String result = "Fail";
-		String error_msg;
+		StaticJsonDocument<200> doc;
 
 		if (!request->hasParam("ssid")) {
-			error_msg = "ssid not filled out.";
+			doc["result"] = "Fail";
+			doc["error_msg"] = "'ssid' must be difined.";
 		} else if (!request->hasParam("pass")) {
-			error_msg = "password not filled out.";
+			doc["result"] = "Fail";
+			doc["error_msg"] = "'pass' must be difined.";
+		} else if (request->getParam("ssid")->value() == "") {
+			doc["result"] = "Fail";
+			doc["error_msg"] = "'ssid' is empty.";
 		} else {
-			result = "Ok";
+			doc["result"] = "Ok";
 			config.wifi.ssid = request->getParam("ssid")->value();
 			config.wifi.pass = request->getParam("pass")->value();
+			Serial.println("New SSID: " + config.wifi.ssid);
+			Serial.println("New PASS: " + config.wifi.pass);
 			saveConfiguration();
 		}
-		
-		request->send(200, "application/json", "{\"result\"=\"" + result + "\",\"error\"=\"" + error_msg + "\"}");
+
+		String json;
+		serializeJson(doc, json);
+		request->send(200, "application/json", json);
 	});
 
 	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request){
 		if(!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
 			return request->requestAuthentication();
 			
-		Serial.println("Reset..");
 		restart = true;
-		request->send(200, "application/json", "{\"result\"=\"Ok\"}");
+		Serial.println("Reset..");
+		request->send(200, "application/json", "{result='Ok'}");
 	});
 
 	server.begin();
