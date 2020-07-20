@@ -13,5 +13,6 @@ Demo project for the ESP8266 with stepper motor and ULN2003 driver.
 ### Tools:
 * [ESP8266LittleFS](https://github.com/earlephilhower/arduino-esp8266littlefs-plugin) - LittleFS uploading tool which integrates into the Arduino IDE.
     
-## Configuration    
-Change WiFi SSID & password in ```data/config```
+### Configuration
+* Copy ```data/config.in``` to ```data/config```.
+* Change WiFi SSID & password in ```data/config```.
