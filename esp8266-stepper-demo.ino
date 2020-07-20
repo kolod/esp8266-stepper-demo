@@ -38,9 +38,15 @@ typedef struct {
 } authConfig;
 
 typedef struct {
+	int rpm;
+	int spr;
+} stepperConfig;
+
+typedef struct {
   String hostname;
   wifiConfig wifi;
   authConfig auth;
+  stepperConfig stepper;
 } Config;
 
 
@@ -71,11 +77,13 @@ void loadConfiguration() {
 	JsonObject obj = doc.as<JsonObject>();
 
 	// Copy values from the JsonDocument to the Config
-	config.hostname  = obj["hostname"].as<String>();
-	config.wifi.ssid = obj["wifi"]["ssid"].as<String>();
-	config.wifi.pass = obj["wifi"]["pass"].as<String>();
-	config.auth.user = obj["auth"]["user"].as<String>();
-	config.auth.pass = obj["auth"]["pass"].as<String>();
+	config.hostname    = obj["hostname"].as<String>();
+	config.wifi.ssid   = obj["wifi"]["ssid"].as<String>();
+	config.wifi.pass   = obj["wifi"]["pass"].as<String>();
+	config.auth.user   = obj["auth"]["user"].as<String>();
+	config.auth.pass   = obj["auth"]["pass"].as<String>();
+	config.stepper.rpm = obj["stepper"]["rpm"].as<int>();
+	config.stepper.spr = obj["stepper"]["spr"].as<int>();
 
 	// Close the file (Curiously, File's destructor doesn't close the file)
 	f.close();
@@ -97,11 +105,13 @@ void saveConfiguration() {
 	StaticJsonDocument<256> doc;
 
 	// Set the values in the document
-	doc["hostname"]     = config.hostname;
-	doc["wifi"]["ssid"] = config.wifi.ssid;
-	doc["wifi"]["pass"] = config.wifi.pass;
-	doc["auth"]["user"] = config.auth.user;
-	doc["auth"]["pass"] = config.auth.pass;
+	doc["hostname"]       = config.hostname;
+	doc["wifi"]["ssid"]   = config.wifi.ssid;
+	doc["wifi"]["pass"]   = config.wifi.pass;
+	doc["auth"]["user"]   = config.auth.user;
+	doc["auth"]["pass"]   = config.auth.pass;
+	obj["stepper"]["rpm"] = config.stepper.rpm;
+	obj["stepper"]["spr"] = config.stepper.spr;
 	
 	// Serialize JSON to file
 	if (serializeJson(doc, f) == 0) Serial.println(F("Failed to write to file"));
@@ -125,8 +135,8 @@ void setup(){
 	Serial.print("pass: "); Serial.println(config.wifi.pass.c_str());
 
 	// Stepper
-	stepper.setRpm(10);
-	stepper.setSpr(4096);
+	stepper.setRpm(config.stepper.rpm);
+	stepper.setSpr(config.stepper.spr);
 	TimerLib.setInterval_us(stepper_run, stepper.interval());
 
 	// Setup wifi connection
@@ -243,7 +253,7 @@ void setup(){
 	// Do not request more often than 3-5 seconds
 	server.on("/scan", HTTP_GET, [](AsyncWebServerRequest *request){
 		
-		if(!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
+		if (!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
 			return request->requestAuthentication();
 
 		StaticJsonDocument<200> doc;
@@ -276,7 +286,7 @@ void setup(){
 	// Set wifi ssid & password
 	server.on("/save", HTTP_GET, [](AsyncWebServerRequest *request){
 		
-		if(!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
+		if (!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
 			return request->requestAuthentication();
 			
 		StaticJsonDocument<200> doc;
@@ -305,7 +315,7 @@ void setup(){
 	});
 
 	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request){
-		if(!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
+		if (!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
 			return request->requestAuthentication();
 			
 		restart = true;
@@ -316,7 +326,7 @@ void setup(){
 	server.begin();
 }
 
-void loop(){
+void loop() {
 	ArduinoOTA.handle();
 
 	if (restart) ESP.restart();

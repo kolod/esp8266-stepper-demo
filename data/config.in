@@ -7,5 +7,9 @@
 	auth: {
 		user: "admin",
 		pass: "12345"
+	},
+	stepper: {
+		rpm: 10,
+		spr: 4096
 	}
 }
