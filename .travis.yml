@@ -33,9 +33,6 @@ cache:
     directories:
         - "~/.platformio"
 
-env:
-    - PLATFORMIO_CI_SRC=.
-
 install:
     - pip install -U platformio
     - platformio update
@@ -47,4 +44,4 @@ install:
     - unzip /tmp/CheapStepper_source.zip -d /tmp/
 
 script:
-    - platformio ci --lib="." --lib="/tmp/CheapStepper-master" --board=nodemcuv2
+    - platformio run
