@@ -37,6 +37,7 @@ install:
     - pip install -U platformio
     - platformio update
     - platformio lib install "ArduinoJson"
+    - platformio lib install "ESPAsyncTCP"
     - platformio lib install "ESP Async WebServer"
     - platformio lib install "uTimerLib"
     - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/CheapStepper_source.zip
