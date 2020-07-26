@@ -36,8 +36,8 @@ install:
     - platformio lib install "ArduinoJson"
     - platformio lib install "ESP Async WebServer"
     - platformio lib install "uTimerLib"
-    - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/onewire_source.zip
-    - unzip /tmp/onewire_source.zip -d /tmp/
+    - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/CheapStepper_source.zip
+    - unzip /tmp/CheapStepper_source.zip -d /tmp/
 
 script:
-    - platformio ci --lib="/tmp/OneWire-master" --board=nodemcuv2
+    - platformio ci --lib="/tmp/CheapStepper-master" --board=nodemcuv2
