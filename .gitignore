@@ -1,1 +1,4 @@
-/data/config
+.pio
+.vscode
+*.vs*
+data/config

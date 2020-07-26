@@ -32,11 +32,14 @@ function show_alert(message, msg_type = "danger") {
 
 function scan_networks() {
 	$.ajax({
-		url: "scan",
+		url: "api",
+		data: {
+			command: "scan"
+		},
 		dataType: "json",
 		timeout: 10000,
 		success: function (output) {
-			if (output.length > 0) {
+			if (typeof(output.wifi) !== 'undefined') {
 				// Save selected option
 				var ssid = $("#ssid option:selected").val();
 
@@ -44,12 +47,12 @@ function scan_networks() {
 				$(".ssid_option").remove();
 
 				// Add found netwoks
-				for (ssid_info in output) {
+				for (ssid_info in output.wifi) {
 					var html;
-					if (output[ssid_info].ssid === ssid) {
-						html = `<option class="ssid_option" selected>${output[ssid_info].ssid}</option>`;
+					if (output.wifi[ssid_info].ssid === ssid) {
+						html = `<option class="ssid_option" selected>${output.wifi[ssid_info].ssid}</option>`;
 					} else {
-						html = `<option class="ssid_option">${output[ssid_info].ssid}</option>`;
+						html = `<option class="ssid_option">${output.wifi[ssid_info].ssid}</option>`;
 					}
 					$("#ssid").append(html);
 				}
@@ -68,13 +71,42 @@ $(document).ready(function () {
 
 	scan_networks();
 
+	$("#home-tab").on("click", function (e) {
+		$(".nav-link").removeClass("active");
+		$(".tab-pane").hide();
+		$("#home").show();
+		$("#navbar").collapse('hide');
+	});
+
+	$("#wifi-tab").on("click", function (e) {
+		$(".nav-link").removeClass("active");
+		$(".tab-pane").hide();
+		$("#wifi").show();
+		$("#navbar").collapse('hide');
+	});
+
+	$("#stepper-tab").on("click", function (e) {
+		$(".nav-link").removeClass("active");
+		$(".tab-pane").hide();
+		$("#stepper").show();
+		$("#navbar").collapse('hide');
+	});
+
+	$("#status-tab").on("click", function (e) {
+		$(".nav-link").removeClass("active");
+		$(".tab-pane").hide();
+		$("#status").show();
+		$("#navbar").collapse('hide');
+	});
+
 	$("#move90cw").on("click", function (e) {
 	   e.preventDefault();
 	   $.ajax({
-		   url: "stepper",
+		   url: "api",
 		   data: {
-			   "mode": "movecw",
-			   "value": 90
+			   command: "stepper",
+			   mode: "movecw",
+			   value: 90
 		   }
 	   });
 	});
@@ -83,10 +115,11 @@ $(document).ready(function () {
 	$("#move90ccw").on("click", function (e) {
 		e.preventDefault();
 		$.ajax({
-			url: "stepper",
+			url: "api",
 			data: {
-				"mode": "moveccw",
-				"value": 90
+				command: "stepper",
+				mode: "moveccw",
+				value: 90
 			}
 		});
 	});
@@ -95,10 +128,11 @@ $(document).ready(function () {
 	$("#move180cw").on("click", function (e) {
 		e.preventDefault();
 		$.ajax({
-			url: "stepper",
+			url: "api",
 			data: {
-				"mode": "movecw",
-				"value": 180
+				command: "stepper",
+				mode: "movecw",
+				value: 180
 			}
 		});
 	});
@@ -107,10 +141,11 @@ $(document).ready(function () {
 	$("#move180ccw").on("click", function (e) {
 		e.preventDefault();
 		$.ajax({
-			url: "stepper",
+			url: "api",
 			data: {
-				"mode": "moveccw",
-				"value": 180
+				command: "stepper",
+				mode: "moveccw",
+				value: 180
 			}
 		});
 	});
@@ -119,10 +154,11 @@ $(document).ready(function () {
 	$("#move360cw").on("click", function (e) {
 		e.preventDefault();
 		$.ajax({
-			url: "stepper",
+			url: "api",
 			data: {
-				"mode": "movecw",
-				"value": 360
+				command: "stepper",
+				mode: "movecw",
+				value: 360
 			}
 		});
 	});
@@ -131,10 +167,11 @@ $(document).ready(function () {
 	$("#move360ccw").on("click", function (e) {
 		e.preventDefault();
 		$.ajax({
-			url: "stepper",
+			url: "api",
 			data: {
-				"mode": "moveccw",
-				"value": 360
+				command: "stepper",
+				mode: "moveccw",
+				value: 360
 			}
 		});
 	});
@@ -149,7 +186,10 @@ $(document).ready(function () {
 	$("#reboot").on("click", function (e) {
 		e.preventDefault();
 		$.ajax({
-			url: "reboot",
+			url: "api",
+			data: {
+				command: "reboot"
+			},
 			dataType: "json",
 			timeout: 10000,
 			success: function (output) {
@@ -202,8 +242,9 @@ $(document).ready(function () {
 
 			// Send request
 			$.ajax({
-				url: "save",
+				url: "api",
 				data: {
+					command: "save",
 					ssid: ssid,
 					pass: pass,
 				},

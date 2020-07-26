@@ -13,10 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-
-#include <ArduinoJson.h>
-#include <uTimerLib.h>
-#include <CheapStepper.h>
+#include <Arduino.h>
 #include <LittleFS.h>
 #include <ArduinoOTA.h>
 #include <ESP8266WiFi.h>
@@ -24,36 +21,16 @@
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFSEditor.h>
+#include <ArduinoJson.h>
+#include <uTimerLib.h>
+#include <CheapStepper.h>
 
 bool restart = false;
 
-typedef struct {
-	String ssid;
-  	String pass;
-} wifiConfig;
-
-typedef struct {
-	String user;
-	String pass;
-} authConfig;
-
-typedef struct {
-	int rpm;
-	int spr;
-} stepperConfig;
-
-typedef struct {
-  String hostname;
-  wifiConfig wifi;
-  authConfig auth;
-  stepperConfig stepper;
-} Config;
-
-
 // SKETCH BEGIN
-Config config;
 AsyncWebServer server(80);
 CheapStepper stepper(14,12,13,15);
+StaticJsonDocument<500> config;
 
 void stepper_run() {
 	stepper.run();
@@ -65,25 +42,12 @@ void loadConfiguration() {
 	// Open file for reading
 	File f = LittleFS.open("config", "r");
 
-	// Allocate a temporary JsonDocument
-	// Don't forget to change the capacity to match your requirements.
-	// Use arduinojson.org/v6/assistant to compute the capacity.
-	StaticJsonDocument<512> doc;
-
 	// Deserialize the JSON document
-	DeserializationError error = deserializeJson(doc, f);
-	if (error) Serial.println(F("Failed to read file, using default configuration"));
-
-	JsonObject obj = doc.as<JsonObject>();
-
-	// Copy values from the JsonDocument to the Config
-	config.hostname    = obj["hostname"].as<String>();
-	config.wifi.ssid   = obj["wifi"]["ssid"].as<String>();
-	config.wifi.pass   = obj["wifi"]["pass"].as<String>();
-	config.auth.user   = obj["auth"]["user"].as<String>();
-	config.auth.pass   = obj["auth"]["pass"].as<String>();
-	config.stepper.rpm = obj["stepper"]["rpm"].as<int>();
-	config.stepper.spr = obj["stepper"]["spr"].as<int>();
+	DeserializationError error = deserializeJson(config, f);
+	if (error) {
+		Serial.println(F("Failed to read file, using default configuration"));
+		Serial.println(error.c_str());
+	}
 
 	// Close the file (Curiously, File's destructor doesn't close the file)
 	f.close();
@@ -98,23 +62,9 @@ void saveConfiguration() {
 		Serial.println(F("Failed to create file"));
 		return;
 	}
-
-	// Allocate a temporary JsonDocument
-	// Don't forget to change the capacity to match your requirements.
-	// Use arduinojson.org/assistant to compute the capacity.
-	StaticJsonDocument<256> doc;
-
-	// Set the values in the document
-	doc["hostname"]       = config.hostname;
-	doc["wifi"]["ssid"]   = config.wifi.ssid;
-	doc["wifi"]["pass"]   = config.wifi.pass;
-	doc["auth"]["user"]   = config.auth.user;
-	doc["auth"]["pass"]   = config.auth.pass;
-	obj["stepper"]["rpm"] = config.stepper.rpm;
-	obj["stepper"]["spr"] = config.stepper.spr;
 	
 	// Serialize JSON to file
-	if (serializeJson(doc, f) == 0) Serial.println(F("Failed to write to file"));
+	if (serializeJson(config, f) == 0) Serial.println(F("Failed to write to file"));
 
 	// Close the file
 	f.close();
@@ -131,23 +81,22 @@ void setup(){
 
 	// Load configuration from file
 	loadConfiguration();
-	Serial.print("ssid: "); Serial.println(config.wifi.ssid.c_str());
-	Serial.print("pass: "); Serial.println(config.wifi.pass.c_str());
+	serializeJsonPretty(config, Serial);
 
 	// Stepper
-	stepper.setRpm(config.stepper.rpm);
-	stepper.setSpr(config.stepper.spr);
+	stepper.setRpm(config["stepper"]["rpm"].as<int>());
+	stepper.setSpr(config["stepper"]["spr"].as<int>());
 	TimerLib.setInterval_us(stepper_run, stepper.interval());
 
 	// Setup wifi connection
 	WiFi.mode(WIFI_AP_STA);
-	WiFi.softAP(config.hostname.c_str());
-	WiFi.begin(config.wifi.ssid.c_str(), config.wifi.pass.c_str());
+	WiFi.softAP(config["hostname"].as<char*>());
+	WiFi.begin(config["wifi"]["ssid"].as<char*>(), config["wifi"]["pass"].as<char*>());
 	if (WiFi.waitForConnectResult() != WL_CONNECTED) {
 		Serial.printf("STA: Failed!\n");
 		WiFi.disconnect(false);
 		delay(1000);
-		WiFi.begin(config.wifi.ssid.c_str(), config.wifi.pass.c_str());
+		WiFi.begin(config["wifi"]["ssid"].as<char*>(), config["wifi"]["pass"].as<char*>());
 	}
 
 	//Send OTA events to the browser
@@ -172,17 +121,17 @@ void setup(){
     	else if (error == OTA_END_ERROR)     Serial.println("End Failed");     //  "Ошибка при завершении OTA-апдейта"
 	});
 
-	ArduinoOTA.setHostname(config.hostname.c_str());
+	ArduinoOTA.setHostname(config["hostname"].as<char*>());
 	ArduinoOTA.begin();
 
 	MDNS.addService("http", "tcp", 80);
 
-	server.addHandler(new SPIFFSEditor(config.auth.user.c_str(), config.auth.pass.c_str(), LittleFS));
+	server.addHandler(new SPIFFSEditor(config["auth"]["user"].as<char*>(), config["auth"]["pass"].as<char*>(), LittleFS));
 
 	server
 		.serveStatic("/", LittleFS, "/www/")                      // Включаем предоставление файлов из флеш памяти
 		.setDefaultFile("index.html")                             // Страница по умолчанию
-		.setAuthentication(config.auth.user.c_str(), config.auth.pass.c_str());   // Включение базовой аутентификации
+		.setAuthentication(config["auth"]["user"].as<char*>(), config["auth"]["pass"].as<char*>());   // Включение базовой аутентификации
 
 	server.onNotFound([](AsyncWebServerRequest *request){
 		Serial.printf("NOT_FOUND: ");
@@ -225,102 +174,117 @@ void setup(){
 		if (index + len == total) Serial.printf("BodyEnd: %u\n", total);
 	});
 
-	server.on("/stepper", HTTP_GET, [](AsyncWebServerRequest *request){
-		if (!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
-			return request->requestAuthentication();		
-
-		// Check if parameters exists
-		if (!request->hasParam("mode") || !request->hasParam("value"))
-			request->send(200, "application/json", "{result='Fail'}");
-  			
-		String mode = request->getParam("mode")->value();
-		long value  = request->getParam("value")->value().toInt();
-
-		if (value == 0) return request->send(200, "application/json", "{result='Fail'}");
-
-		if (mode == "movecw") {
-			stepper.moveCW(value);
-			Serial.println("movecw");
-			return request->send(200, "application/json", "{result='OK'}");
-		} else if (mode == "moveccw") {
-			stepper.moveCCW(value);
-			Serial.println("moveccw");
-			return request->send(200, "application/json", "{result='OK'}");
-		}
-	});
-
-	// First request will return 0 results unless you start scan from somewhere else (loop/setup)
-	// Do not request more often than 3-5 seconds
-	server.on("/scan", HTTP_GET, [](AsyncWebServerRequest *request){
-		
-		if (!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
+	server.on("/api", HTTP_GET | HTTP_POST, [](AsyncWebServerRequest *request){
+		if (!request->authenticate(config["auth"]["user"].as<char*>(), config["auth"]["pass"].as<char*>())) 
 			return request->requestAuthentication();
 
-		StaticJsonDocument<200> doc;
-			
-		int n = WiFi.scanComplete();
-		if (n == -2) {
-			WiFi.scanNetworks(true);
-		} else if (n > 0) {
-			JsonArray arr = doc.createNestedArray();
-			for (int i = 0; i < n; ++i) {
-				JsonObject obj = arr.createNestedObject();
-				obj["ssid"]    = WiFi.SSID(i);
-				obj["bssid"]   = WiFi.BSSIDstr(i);
-				obj["rssi"]    = WiFi.RSSI(i);
-				obj["channel"] = WiFi.channel(i);
-				obj["secure"]  = WiFi.encryptionType(i);
-				obj["hidden"]  = WiFi.isHidden(i);
-			}
-			WiFi.scanDelete();
-			if (WiFi.scanComplete() == -2) {
+		StaticJsonDocument<500> doc;
+
+		if (!request->hasParam("command")) {
+			doc["result"] = "Fail";
+			doc["msg"]    = "Command not spesified";
+		}
+
+		String command = request->getParam("command")->value();
+
+		if (command == "reboot") {
+			restart = true;
+			Serial.println("Reset..");
+			doc["result"] = "Ok";
+
+		} else if (command == "scan") {
+			// First request will return 0 results unless you start scan from somewhere else (loop/setup)
+			// Do not request more often than 3-5 seconds
+
+			int n = WiFi.scanComplete();
+
+			if (n == -2) {
 				WiFi.scanNetworks(true);
+				doc["result"] = "Ok";
+
+			} else if (n > 0) {
+				JsonArray arr = doc.createNestedArray("wifi");
+
+				for (int i = 0; i < n; ++i) {
+					JsonObject obj = arr.createNestedObject();
+					obj["ssid"]    = WiFi.SSID(i);
+					obj["bssid"]   = WiFi.BSSIDstr(i);
+					obj["rssi"]    = WiFi.RSSI(i);
+					obj["channel"] = WiFi.channel(i);
+					obj["secure"]  = WiFi.encryptionType(i);
+					obj["hidden"]  = WiFi.isHidden(i);
+				}
+
+				WiFi.scanDelete();
+				if (WiFi.scanComplete() == -2) {
+					WiFi.scanNetworks(true);
+				}
+				
+				doc["result"] = "Ok";
 			}
-		}
 
-		String json;
-		serializeJson(doc, json);
-		request->send(200, "application/json", json);
-	});
+		} else if (command == "save") {
 
-	// Set wifi ssid & password
-	server.on("/save", HTTP_GET, [](AsyncWebServerRequest *request){
-		
-		if (!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
-			return request->requestAuthentication();
-			
-		StaticJsonDocument<200> doc;
+
+/*
 
 		if (!request->hasParam("ssid")) {
-			doc["result"] = "Fail";
+			doc["result"]    = "Fail";
 			doc["error_msg"] = "'ssid' must be difined.";
 		} else if (!request->hasParam("pass")) {
-			doc["result"] = "Fail";
+			doc["result"]    = "Fail";
 			doc["error_msg"] = "'pass' must be difined.";
 		} else if (request->getParam("ssid")->value() == "") {
-			doc["result"] = "Fail";
+			doc["result"]    = "Fail";
 			doc["error_msg"] = "'ssid' is empty.";
 		} else {
-			doc["result"] = "Ok";
+			doc["result"]    = "Ok";
 			config.wifi.ssid = request->getParam("ssid")->value();
 			config.wifi.pass = request->getParam("pass")->value();
 			Serial.println("New SSID: " + config.wifi.ssid);
 			Serial.println("New PASS: " + config.wifi.pass);
 			saveConfiguration();
-		}
 
+		}
+			*/
+			
+			;
+		} else if (command == "load") {
+			;
+		} else if (command == "stepper") {
+
+			// Check if parameters exists
+			if (!request->hasParam("mode") || !request->hasParam("value")) {
+				doc["result"] = "Fail";
+				doc["msg"] = "The stepper command must have 'mode' & 'value' parameters.";
+			} else {
+				String mode = request->arg("mode");
+				long value  = request->arg("value").toInt();
+
+				if (value == 0) {
+					doc["result"] = "Fail";
+					doc["msg"] = "The 'value' parameter must not be zero.";
+				} else {
+					if (mode == "movecw") {
+						stepper.moveCW(value);
+						Serial.println("movecw");
+						doc["result"] = "Ok";
+					} else if (mode == "moveccw") {
+						stepper.moveCCW(value);
+						Serial.println("moveccw");
+						doc["result"] = "Ok";
+					} else {
+						doc["result"] = "Fail";
+						doc["msg"] = "The 'mode' parameter has an invalid value.";
+					}
+				}
+				
+			}
+		}
+		
 		String json;
 		serializeJson(doc, json);
 		request->send(200, "application/json", json);
-	});
-
-	server.on("/reboot", HTTP_GET, [](AsyncWebServerRequest *request){
-		if (!request->authenticate(config.auth.user.c_str(), config.auth.pass.c_str())) 
-			return request->requestAuthentication();
-			
-		restart = true;
-		Serial.println("Reset..");
-		request->send(200, "application/json", "{result='Ok'}");
 	});
 
 	server.begin();
@@ -328,6 +292,5 @@ void setup(){
 
 void loop() {
 	ArduinoOTA.handle();
-
 	if (restart) ESP.restart();
 }
