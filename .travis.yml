@@ -24,6 +24,9 @@ language: python
 python:
     - "2.7"
 
+os:
+    - linux
+
 sudo: false
 
 cache:
@@ -42,7 +45,8 @@ install:
     - platformio lib install "uTimerLib"
     - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/CheapStepper_source.zip
     - unzip /tmp/CheapStepper_source.zip -d /tmp/
+    - pdw
     - ls -lah .
 
 script:
-    - platformio ci --lib="/tmp/CheapStepper-master" --board=nodemcuv2
+    - platformio ci --lib="/tmp/CheapStepper-master" --lib=.pio\libdeps\nodemcuv2\AsyncTCP\src --board=nodemcuv2
