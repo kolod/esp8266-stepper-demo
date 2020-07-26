@@ -41,8 +41,6 @@ install:
     - platformio lib install "ESP Async WebServer"
     - platformio lib install "uTimerLib"
     - platformio lib install "Cheap Stepper"
-    - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/CheapStepper_source.zip
-    - unzip /tmp/CheapStepper_source.zip -d /tmp/
 
 script:
     - platformio run
