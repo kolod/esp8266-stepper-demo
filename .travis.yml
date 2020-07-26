@@ -33,9 +33,9 @@ cache:
 install:
     - pip install -U platformio
     - platformio update
-    - platformio lib install ArduinoJson
-    - platformio lib install ESP Async WebServer
-    - platformio lib install uTimerLib
+    - platformio lib install "ArduinoJson"
+    - platformio lib install "ESP Async WebServer"
+    - platformio lib install "uTimerLib"
     - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/onewire_source.zip
     - unzip /tmp/onewire_source.zip -d /tmp/
 
