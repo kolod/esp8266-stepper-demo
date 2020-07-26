@@ -45,7 +45,7 @@ install:
     - platformio lib install "uTimerLib"
     - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/CheapStepper_source.zip
     - unzip /tmp/CheapStepper_source.zip -d /tmp/
-    - pdw
+    - pwd
     - ls -lah .
 
 script:
