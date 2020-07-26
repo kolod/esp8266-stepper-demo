@@ -45,8 +45,6 @@ install:
     - platformio lib install "uTimerLib"
     - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/CheapStepper_source.zip
     - unzip /tmp/CheapStepper_source.zip -d /tmp/
-    - pwd
-    - ls -lah .pio/libdeps/nodemcuv2
 
 script:
-    - platformio ci --lib="/tmp/CheapStepper-master" --lib=".pio/libdeps/nodemcuv2/AsyncTCP/src" --lib=".pio/libdeps/nodemcuv2/ESP Async WebServer/src" --board=nodemcuv2
+    - platformio ci --lib="." --lib="/tmp/CheapStepper-master" --board=nodemcuv2
