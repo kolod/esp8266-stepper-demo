@@ -30,6 +30,9 @@ cache:
     directories:
         - "~/.platformio"
 
+env:
+    - PLATFORMIO_CI_SRC=kolod/esp8266-stepper-demo
+
 install:
     - pip install -U platformio
     - platformio update
@@ -38,6 +41,7 @@ install:
     - platformio lib install "uTimerLib"
     - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/CheapStepper_source.zip
     - unzip /tmp/CheapStepper_source.zip -d /tmp/
+    - ls -lah .
 
 script:
     - platformio ci --lib="/tmp/CheapStepper-master" --board=nodemcuv2
