@@ -46,7 +46,7 @@ install:
     - wget https://github.com/kolod/CheapStepper/archive/master.zip  -O /tmp/CheapStepper_source.zip
     - unzip /tmp/CheapStepper_source.zip -d /tmp/
     - pwd
-    - ls -lah .
+    - ls -lah .pio/libdeps
 
 script:
-    - platformio ci --lib="/tmp/CheapStepper-master" --lib=.pio\libdeps\nodemcuv2\AsyncTCP\src --board=nodemcuv2
+    - platformio ci --lib="/tmp/CheapStepper-master" --lib=".pio/libdeps/nodemcuv2/AsyncTCP/src" --lib=".pio/libdeps/nodemcuv2/ESP Async WebServer/src" --board=nodemcuv2

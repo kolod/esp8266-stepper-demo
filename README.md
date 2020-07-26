@@ -1,4 +1,4 @@
-# esp8266-stepper-demo
+# esp8266-stepper-demo [![Build Status](https://travis-ci.org/kolod/esp8266-stepper-demo.svg?branch=master)](https://travis-ci.org/kolod/esp8266-stepper-demo)
 Demo project for the ESP8266 with stepper motor and ULN2003 driver.
 
 ## Dependencies:
