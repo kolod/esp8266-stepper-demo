@@ -31,7 +31,7 @@ cache:
         - "~/.platformio"
 
 env:
-    - PLATFORMIO_CI_SRC=kolod/esp8266-stepper-demo
+    - PLATFORMIO_CI_SRC=.
 
 install:
     - pip install -U platformio
