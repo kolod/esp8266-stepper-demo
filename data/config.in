@@ -4,6 +4,12 @@
 		ssid: "your_ssid",
 		pass: "your_passpord"
 	},
+	ddns: {
+		provider: "your_ddns_provider",
+		domen: "your_ddns_domen",
+		user: "your_ddns_username",
+		pass: "your_ddns_password"
+	}
 	auth: {
 		user: "admin",
 		pass: "12345"

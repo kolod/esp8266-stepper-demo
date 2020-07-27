@@ -23,6 +23,7 @@
 #include <SPIFFSEditor.h>
 #include <ArduinoJson.h>
 #include <uTimerLib.h>
+#include <EasyDDNS.h>
 #include <CheapStepper.h>
 
 bool restart = false;
@@ -124,6 +125,15 @@ void setup(){
 	ArduinoOTA.setHostname(config["hostname"].as<char*>());
 	ArduinoOTA.begin();
 
+	// DDNS
+	EasyDDNS.service(config["ddns"]["provider"].as<String>());
+	EasyDDNS.client(
+		config["ddns"]["domain"].as<String>(),
+		config["ddns"]["user"].as<String>(),
+		config["ddns"]["pass"].as<String>()
+	);
+
+	// HTTP Server
 	MDNS.addService("http", "tcp", 80);
 
 	server.addHandler(new SPIFFSEditor(config["auth"]["user"].as<char*>(), config["auth"]["pass"].as<char*>(), LittleFS));
@@ -292,5 +302,6 @@ void setup(){
 
 void loop() {
 	ArduinoOTA.handle();
+	EasyDDNS.update(10000);
 	if (restart) ESP.restart();
 }
