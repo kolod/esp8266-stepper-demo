@@ -39,7 +39,6 @@ install:
     - platformio lib install "ArduinoJson"
     - platformio lib install "ESPAsyncTCP"
     - platformio lib install "ESP Async WebServer"
-    - platformio lib install "uTimerLib"
     - platformio lib install "Cheap Stepper"
     - platformio lib install "EasyDDNS"
     - platformio lib install "TinyUPnP"

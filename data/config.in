@@ -9,7 +9,13 @@
 		domen: "your_ddns_domen",
 		user: "your_ddns_username",
 		pass: "your_ddns_password"
-	}
+	},
+	upnp: {
+		name: "stepper",
+		lease: 36000,
+		localport: 80,
+		remoteport: 80
+	},
 	auth: {
 		user: "admin",
 		pass: "12345"

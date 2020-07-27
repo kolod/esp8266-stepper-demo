@@ -22,20 +22,20 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFSEditor.h>
 #include <ArduinoJson.h>
-#include <uTimerLib.h>
+#include <Ticker.h>
 #include <EasyDDNS.h>
+#include <TinyUPnP.h>
 #include <CheapStepper.h>
 
-bool restart = false;
 
 // SKETCH BEGIN
 AsyncWebServer server(80);
 CheapStepper stepper(14,12,13,15);
-StaticJsonDocument<500> config;
+StaticJsonDocument<1000> config;
+TinyUPnP tinyUPnP(20000);
+Ticker timer;
+bool restart = false;
 
-void stepper_run() {
-	stepper.run();
-}
 
 // Loads the configuration from a file
 void loadConfiguration() {
@@ -87,7 +87,7 @@ void setup(){
 	// Stepper
 	stepper.setRpm(config["stepper"]["rpm"].as<int>());
 	stepper.setSpr(config["stepper"]["spr"].as<int>());
-	TimerLib.setInterval_us(stepper_run, stepper.interval());
+	timer.attach_ms(stepper.interval(), std::bind(&CheapStepper::run, &stepper));
 
 	// Setup wifi connection
 	WiFi.mode(WIFI_AP_STA);
@@ -132,6 +132,30 @@ void setup(){
 		config["ddns"]["user"].as<String>(),
 		config["ddns"]["pass"].as<String>()
 	);
+
+	// UPnP
+	tinyUPnP.addPortMappingConfig(
+		WiFi.localIP(), 
+		config["upnp"]["localport"].as<int>(),
+		RULE_PROTOCOL_TCP, 
+		config["upnp"]["lease"].as<int>(), 
+		config["upnp"]["name"].as<String>()
+	);
+
+	boolean portMappingAdded = false;
+	while (!portMappingAdded) {
+		portMappingAdded = tinyUPnP.commitPortMappings();
+		Serial.println("");
+	
+		if (!portMappingAdded) {
+			// for debugging, you can see this in your router too under forwarding or UPnP
+			tinyUPnP.printAllPortMappings();
+			Serial.println(F("This was printed because adding the required port mapping failed"));
+			delay(30000);  // 30 seconds before trying again
+		}
+	}
+  
+  Serial.println("UPnP done");
 
 	// HTTP Server
 	MDNS.addService("http", "tcp", 80);
