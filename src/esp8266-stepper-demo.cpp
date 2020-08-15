@@ -238,7 +238,7 @@ void setup(){
 		if (!request->authenticate(config["auth"]["user"].as<char*>(), config["auth"]["pass"].as<char*>())) 
 			return request->requestAuthentication();
 
-		StaticJsonDocument<500> doc;
+		StaticJsonDocument<2000> doc;
 
 		if (!request->hasParam("command")) {
 			doc["result"] = "Fail";

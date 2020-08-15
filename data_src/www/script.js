@@ -31,13 +31,16 @@ function show_alert(message, msg_type = "danger") {
 }
 
 function scan_networks() {
+
+	$("#scan").prop('disabled', true);
+
 	$.ajax({
 		url: "api",
 		data: {
 			command: "scan"
 		},
 		dataType: "json",
-		timeout: 10000,
+		timeout: 1000,
 		success: function (output) {
 			if (typeof(output.wifi) !== 'undefined') {
 				// Save selected option
@@ -47,18 +50,15 @@ function scan_networks() {
 				$(".ssid_option").remove();
 
 				// Sort wiwi ssid's by signal strengths
-				var sorted = output.wifi.sort(function sort_ssid(a, b) {return a.rssi - b.rssi});
+				var sorted = output.wifi.sort(function sort_ssid(a, b) {return b.rssi - a.rssi});
 
 				// Add found netwoks
 				for (ssid_info in sorted) {
-					var html;
-					if (sorted[ssid_info].ssid === ssid) {
-						html = `<option class="ssid_option" value="${sorted[ssid_info].ssid} selected">${sorted[ssid_info].ssid}</option>`;
-					} else {
-						html = `<option class="ssid_option" value="${sorted[ssid_info].ssid}">${sorted[ssid_info].ssid}</option>`;
-					}
+					var html = `<option class="ssid_option" value="${sorted[ssid_info].ssid}">${sorted[ssid_info].ssid}, ch:${sorted[ssid_info].channel}</option>`;
 					$("#ssid").append(html);
 				}
+				$('#ssid').selectpicker('refresh');
+				$("#ssid").selectpicker("val", [ssid]);
 
 			} else {
 				setTimeout(scan_networks, 10000);
@@ -66,6 +66,9 @@ function scan_networks() {
 		},
 		error: function(xmlhttprequest, textstatus, message) {
 			setTimeout(scan_networks, 10000);
+		},
+		complete: function(jqXHR, textStatus) {
+			$("#scan").prop('disabled', false);
 		}
 	});
 }
@@ -281,8 +284,8 @@ $(document).ready(function () {
 		e.preventDefault();
 
 		// SSID
-		var ssid = $("#ssid option:selected").text();
-		if (ssid == $("#manual-ssid-option").text()) ssid = $("#manual-ssid").val();
+		var ssid = $("#ssid option:selected").val();
+		if (ssid == $("#manual-ssid-option").val()) ssid = $("#manual-ssid").val();
 
 		// Password
 		var pass = $("#wifi-password").val();
