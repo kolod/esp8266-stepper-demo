@@ -1,11 +1,32 @@
 import subprocess
 import shutil
+import errno
 import glob
 import sys
 import os
 
+def mkdirp(path, mode = 0o777):
+    head, tail = os.path.split(path)
+    if not tail:
+        head, tail = os.path.split(head)
+    if head and tail and not os.path.exists(head):
+        try:
+            mkdirp(head, mode)
+        except OSError as e:
+            # be happy if someone already created the path
+            if e.errno != errno.EEXIST:
+                raise
+        if tail == os.curdir:  # xxx/newdir/. exists if xxx/newdir exists
+            return
+    try:
+        os.mkdir(path, mode)
+    except OSError as e:
+        # be happy if someone already created the path
+        if e.errno != errno.EEXIST:
+            raise
+
 # Create data dir
-os.makedirs('data/www', exist_ok=True)
+mkdirp('data/www')
 
 
 # Copy config
