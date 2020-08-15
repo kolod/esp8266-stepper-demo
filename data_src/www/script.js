@@ -11,7 +11,7 @@
 // GNU General Public License for more details.
 // 
 // You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// along with this program.  If not, see https://www.gnu.org/licenses/.
 
 
 function show_alert(message, msg_type = "danger") {
@@ -46,13 +46,16 @@ function scan_networks() {
 				// Remove existing options
 				$(".ssid_option").remove();
 
+				// Sort wiwi ssid's by signal strengths
+				var sorted = output.wifi.sort(function sort_ssid(a, b) {return a.rssi - b.rssi});
+
 				// Add found netwoks
-				for (ssid_info in output.wifi) {
+				for (ssid_info in sorted) {
 					var html;
-					if (output.wifi[ssid_info].ssid === ssid) {
-						html = `<option class="ssid_option" selected>${output.wifi[ssid_info].ssid}</option>`;
+					if (sorted[ssid_info].ssid === ssid) {
+						html = `<option class="ssid_option" value="${sorted[ssid_info].ssid} selected">${sorted[ssid_info].ssid}</option>`;
 					} else {
-						html = `<option class="ssid_option">${output.wifi[ssid_info].ssid}</option>`;
+						html = `<option class="ssid_option" value="${sorted[ssid_info].ssid}">${sorted[ssid_info].ssid}</option>`;
 					}
 					$("#ssid").append(html);
 				}
@@ -67,9 +70,55 @@ function scan_networks() {
 	});
 }
 
+function load_status() {	
+	$.ajax({
+		url: "api",
+		data: {
+			command: "load"
+		},
+		dataType: "json",
+		timeout: 10000,
+		success: function (output) {
+			if (typeof(output.status) !== 'undefined') {
+				$("#mac").val(output.status.mac);
+				$("#ip").val(output.status.ip);
+				$("#pos").val(output.stepper.pos);
+			}
+		},
+		error: function(xmlhttprequest, textstatus, message) {
+			setTimeout(load_status, 10000);
+		}
+	});
+}
+
+function load_stepper() {
+	$.ajax({
+		url: "api",
+		data: {
+			command: "load",
+			mode: "stepper"
+		},
+		dataType: "json",
+		timeout: 10000,
+		success: function (output) {
+			var isFinished = false;
+			if (typeof(output.stepper) !== 'undefined') {
+				$("#pos").val(output.stepper.pos);
+				if (output.stepper.done === true) isFinished = true;
+			}
+			// Send next request while not finished
+			if (!isFinished) setTimeout(load_stepper, 10000);
+		},
+		error: function(xmlhttprequest, textstatus, message) {
+			setTimeout(load_stepper, 10000);
+		}
+	});
+}
+
 $(document).ready(function () {
 
 	scan_networks();
+	load_status();
 
 	$("#home-tab").on("click", function (e) {
 		$(".nav-link").removeClass("active");
@@ -100,15 +149,16 @@ $(document).ready(function () {
 	});
 
 	$("#move90cw").on("click", function (e) {
-	   e.preventDefault();
-	   $.ajax({
-		   url: "api",
-		   data: {
-			   command: "stepper",
-			   mode: "movecw",
-			   value: 90
-		   }
-	   });
+		e.preventDefault();
+		$.ajax({
+			url: "api",
+			data: {
+				command: "stepper",
+				mode: "movecw",
+				value: 90
+		   	}
+		});
+		load_stepper();
 	});
 
 	
@@ -122,6 +172,7 @@ $(document).ready(function () {
 				value: 90
 			}
 		});
+		load_stepper();
 	});
 
 	 
@@ -135,6 +186,7 @@ $(document).ready(function () {
 				value: 180
 			}
 		});
+		load_stepper();
 	});
 
 	 
@@ -148,6 +200,7 @@ $(document).ready(function () {
 				value: 180
 			}
 		});
+		load_stepper();
 	});
 
 	 
@@ -161,6 +214,7 @@ $(document).ready(function () {
 				value: 360
 			}
 		});
+		load_stepper();
 	});
 
 	 
@@ -174,6 +228,7 @@ $(document).ready(function () {
 				value: 360
 			}
 		});
+		load_stepper();
 	});
 
 	// Request networs
@@ -194,7 +249,7 @@ $(document).ready(function () {
 			timeout: 10000,
 			success: function (output) {
 				// Show alert if requst complited
-				if (typeof(output.result) === 'undefined') {
+				if ((output === null) || (typeof(output.result) === 'undefined')) {
 					show_alert("Settings isn't saved. Unknown error.");
 				} else {
 					if (output.result == 'Ok') {
@@ -252,7 +307,7 @@ $(document).ready(function () {
 				timeout: 10000,
 				success: function (output) {
 					// Show alert if requst complited
-					if (typeof(output.result) === 'undefined') {
+					if ((output === null) || (typeof(output.result) === 'undefined')) {
 						show_alert("Settings isn't saved. Unknown error.");
 					} else {
 						if (output.result == 'Ok') {

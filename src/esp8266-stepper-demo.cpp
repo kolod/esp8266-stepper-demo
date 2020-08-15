@@ -22,7 +22,6 @@
 #include <ESPAsyncWebServer.h>
 #include <SPIFFSEditor.h>
 #include <ArduinoJson.h>
-#include <Ticker.h>
 #include <EasyDDNS.h>
 #include <TinyUPnP.h>
 #include <CheapStepper.h>
@@ -30,12 +29,33 @@
 
 // SKETCH BEGIN
 AsyncWebServer server(80);
-CheapStepper stepper(14,12,13,15);
 StaticJsonDocument<1000> config;
 TinyUPnP tinyUPnP(20000);
-Ticker timer;
 bool restart = false;
 
+
+enum class LoadMode {
+	none    = 0b00000000,
+	config  = 0b00000001,
+	status  = 0b00000010,
+	stepper = 0b00000100,
+	all     = (config | status | stepper)
+};
+
+LoadMode modeFromString(String mode, LoadMode defaultMode = LoadMode::all);
+
+LoadMode modeFromString(String mode, LoadMode defaultMode) {
+	if (mode == "all")      return LoadMode::all;
+	if (mode == "config")   return LoadMode::config;
+	if (mode == "status")   return LoadMode::status;
+	if (mode == "stepper")  return LoadMode::stepper;
+	return defaultMode;
+}
+
+bool operator == (LoadMode c1, LoadMode c2) {
+	return static_cast<std::underlying_type<LoadMode>::type>(c1) & 
+	       static_cast<std::underlying_type<LoadMode>::type>(c2);
+}
 
 // Loads the configuration from a file
 void loadConfiguration() {
@@ -82,12 +102,9 @@ void setup(){
 
 	// Load configuration from file
 	loadConfiguration();
-	serializeJsonPretty(config, Serial);
 
 	// Stepper
-	stepper.setRpm(config["stepper"]["rpm"].as<int>());
-	stepper.setSpr(config["stepper"]["spr"].as<int>());
-	timer.attach_ms(stepper.interval(), std::bind(&CheapStepper::run, &stepper));
+	Stepper.init(14, 12, 13, 15, config["stepper"]["spr"].as<int>(), config["stepper"]["rpm"].as<int>());
 
 	// Setup wifi connection
 	WiFi.mode(WIFI_AP_STA);
@@ -133,13 +150,22 @@ void setup(){
 		config["ddns"]["pass"].as<String>()
 	);
 
-	// UPnP
+	// UPnP for HTTP
 	tinyUPnP.addPortMappingConfig(
 		WiFi.localIP(), 
 		config["upnp"]["localport"].as<int>(),
 		RULE_PROTOCOL_TCP, 
 		config["upnp"]["lease"].as<int>(), 
 		config["upnp"]["name"].as<String>()
+	);
+
+	// UPnP for ArduinoOTA
+	tinyUPnP.addPortMappingConfig(
+		WiFi.localIP(),
+		8266,                                    // TODO: default OTA port hardcoded
+		RULE_PROTOCOL_TCP, 
+		config["upnp"]["lease"].as<int>(), 
+		config["upnp"]["name"].as<String>() + "OTA"
 	);
 
 	boolean portMappingAdded = false;
@@ -284,7 +310,28 @@ void setup(){
 			
 			;
 		} else if (command == "load") {
-			;
+
+			Serial.print("Mode: ");
+			Serial.println(request->arg("mode"));
+
+			LoadMode mode = modeFromString(request->arg("mode"));
+			
+			doc["result"] = "Ok";
+
+			if (mode == LoadMode::status) {
+				doc["status"]["mac"]  = WiFi.macAddress();
+				doc["status"]["ip"]   = WiFi.localIP().toString();
+			}
+
+			if (mode == LoadMode::stepper) {
+				doc["stepper"]["pos"]  = Stepper.position();
+				doc["stepper"]["done"] = Stepper.isReady();
+			}
+
+			if (mode == LoadMode::config) {
+				doc["config"] = config;
+			}
+			
 		} else if (command == "stepper") {
 
 			// Check if parameters exists
@@ -300,11 +347,11 @@ void setup(){
 					doc["msg"] = "The 'value' parameter must not be zero.";
 				} else {
 					if (mode == "movecw") {
-						stepper.moveCW(value);
+						Stepper.moveCW(value);
 						Serial.println("movecw");
 						doc["result"] = "Ok";
 					} else if (mode == "moveccw") {
-						stepper.moveCCW(value);
+						Stepper.moveCCW(value);
 						Serial.println("moveccw");
 						doc["result"] = "Ok";
 					} else {

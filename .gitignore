@@ -1,4 +1,4 @@
 .pio
 .vscode
 *.vs*
-data/config
+data/

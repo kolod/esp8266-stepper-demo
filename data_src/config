@@ -1,0 +1,28 @@
+{
+	hostname: "stepper",
+	wifi: {
+		ssid: "Alex",
+		pass: "TZY98pbAuw"
+	},
+	ddns: {
+		provider: "afraid.org",
+		domen: "",
+		user: "9DeLXzhqWu9jwjPFrGqC9KuY",
+		pass: ""
+	},
+	upnp: {
+		name: "stepper",
+		lease: 36000,
+		localport: 80,
+		remoteport: 80,
+		otaport: 8266
+	},
+	auth: {
+		user: "alex",
+		pass: "2710539"
+	},
+	stepper: {
+		rpm: 10,
+		spr: 4096
+	}
+}
