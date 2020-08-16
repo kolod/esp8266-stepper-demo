@@ -256,6 +256,10 @@ void setup(){
 			// First request will return 0 results unless you start scan from somewhere else (loop/setup)
 			// Do not request more often than 3-5 seconds
 
+			if (WiFi.isConnected()) {
+				doc["ssid"] = WiFi.SSID();
+			}
+
 			int n = WiFi.scanComplete();
 
 			if (n == -2) {

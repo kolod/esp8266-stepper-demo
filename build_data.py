@@ -67,3 +67,7 @@ subprocess.Popen([
 )
 
 shutil.copy('data_src/www/script.js', 'data/www/script.js')
+shutil.copy('data_src/www/mfglabsiconset-webfont.svg', 'data/www/mfglabsiconset-webfont.svg')
+shutil.copy('data_src/www/mfglabsiconset-webfont.eot', 'data/www/mfglabsiconset-webfont.eot')
+shutil.copy('data_src/www/mfglabsiconset-webfont.ttf', 'data/www/mfglabsiconset-webfont.ttf')
+shutil.copy('data_src/www/mfglabsiconset-webfont.woff', 'data/www/mfglabsiconset-webfont.woff')

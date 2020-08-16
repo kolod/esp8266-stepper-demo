@@ -46,6 +46,10 @@ function scan_networks() {
 				// Save selected option
 				var ssid = $("#ssid option:selected").val();
 
+				if (output.ssid !== undefined) {
+					ssid = output.ssid;
+				}
+
 				// Remove existing options
 				$(".ssid_option").remove();
 
@@ -54,11 +58,11 @@ function scan_networks() {
 
 				// Add found netwoks
 				for (ssid_info in sorted) {
-					var html = `<option class="ssid_option" value="${sorted[ssid_info].ssid}">${sorted[ssid_info].ssid}, ch:${sorted[ssid_info].channel}</option>`;
+					var html = `<option class="ssid_option" value="${sorted[ssid_info].ssid}" data-icon=${sorted[ssid_info].secure?'"icon-lock"':'"icon-unlock"'} >${sorted[ssid_info].ssid}, ch:${sorted[ssid_info].channel}${sorted[ssid_info].ssid===output.ssid?'<span class="text-success"> [connected]</span>':''}</option>`;
 					$("#ssid").append(html);
 				}
 				$('#ssid').selectpicker('refresh');
-				$("#ssid").selectpicker("val", [ssid]);
+				$("#ssid").selectpicker("val", [ssid]).trigger('change');
 
 			} else {
 				setTimeout(scan_networks, 10000);
@@ -122,6 +126,11 @@ $(document).ready(function () {
 
 	scan_networks();
 	load_status();
+
+	$('select').selectpicker({
+		'iconBase': 'mfg_labs_iconsetregular', 
+		'tickIcon': 'icon-chevron_down' 
+	})
 
 	$("#home-tab").on("click", function (e) {
 		$(".nav-link").removeClass("active");
@@ -276,6 +285,7 @@ $(document).ready(function () {
 			$("#manual-ssid").show().focus();
 		} else {
 			$("#manual-ssid").hide();
+			$("#wifi-password").focus();
 		}
 	});
 	
