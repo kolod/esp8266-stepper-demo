@@ -1,15 +1,15 @@
 // Copyright (C) 2020  Aleksandr kolodki <alexandr.kolodkin@gmail.com>
-// 
+//
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
-// 
+//
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
-// 
+//
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
@@ -29,7 +29,7 @@
 
 // SKETCH BEGIN
 AsyncWebServer server(80);
-StaticJsonDocument<1000> config;
+StaticJsonDocument<1500> config;
 TinyUPnP tinyUPnP(20000);
 bool restart = false;
 
@@ -53,13 +53,13 @@ LoadMode modeFromString(String mode, LoadMode defaultMode) {
 }
 
 bool operator == (LoadMode c1, LoadMode c2) {
-	return static_cast<std::underlying_type<LoadMode>::type>(c1) & 
+	return static_cast<std::underlying_type<LoadMode>::type>(c1) &
 	       static_cast<std::underlying_type<LoadMode>::type>(c2);
 }
 
 // Loads the configuration from a file
 void loadConfiguration() {
-	
+
 	// Open file for reading
 	File f = LittleFS.open("config", "r");
 
@@ -83,7 +83,7 @@ void saveConfiguration() {
 		Serial.println(F("Failed to create file"));
 		return;
 	}
-	
+
 	// Serialize JSON to file
 	if (serializeJson(config, f) == 0) Serial.println(F("Failed to write to file"));
 
@@ -91,32 +91,50 @@ void saveConfiguration() {
 	f.close();
 }
 
-void setup(){
+void setup_wifi() {
+	const char* hostname = config["hostname"];
+	const char* new_ssid = config["wifi"]["new_ssid"];
+	const char* new_pass = config["wifi"]["new_pass"];
+	const char* ssid     = config["wifi"]["ssid"];
+	const char* pass     = config["wifi"]["pass"];
 
-	// Setup debug port
-	Serial.begin(74880);
-	Serial.setDebugOutput(true);
+	// Set station mode
+	WiFi.mode(WIFI_STA);
 
-	// Mount FS
-	LittleFS.begin();
-
-	// Load configuration from file
-	loadConfiguration();
-
-	// Stepper
-	Stepper.init(14, 12, 13, 15, config["stepper"]["spr"].as<int>(), config["stepper"]["rpm"].as<int>());
-
-	// Setup wifi connection
-	WiFi.mode(WIFI_AP_STA);
-	WiFi.softAP(config["hostname"].as<char*>());
-	WiFi.begin(config["wifi"]["ssid"].as<char*>(), config["wifi"]["pass"].as<char*>());
-	if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-		Serial.printf("STA: Failed!\n");
-		WiFi.disconnect(false);
-		delay(1000);
-		WiFi.begin(config["wifi"]["ssid"].as<char*>(), config["wifi"]["pass"].as<char*>());
+	// Connect to the new network if the new_ssid is set.
+	if (new_ssid) {
+		WiFi.begin(new_ssid, new_pass);
+		// If connection successful save new ssid & pass and exit
+		if (WiFi.waitForConnectResult() == WL_CONNECTED) {
+			Serial.printf_P(PSTR("New SSID: %s, New PASS: %s"), new_ssid, new_pass);
+			config["wifi"]["ssid"] = new_ssid;
+			config["wifi"]["pass"] = new_pass;
+			config["wifi"].remove("new_ssid");
+			config["wifi"].remove("new_pass");
+			saveConfiguration();
+			return;
+		}
 	}
 
+	// Connect to existing network
+	WiFi.begin(ssid, pass);
+
+	// If connection failed create access point
+	if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+		Serial.println("STA: Failed!");
+		WiFi.mode(WIFI_AP);
+		WiFi.softAP(hostname, pass);
+	}
+
+	// Remove new_ssid & new_pass
+	if (new_ssid) {
+		config["wifi"].remove("new_ssid");
+		if (new_pass) config["wifi"].remove("new_pass");
+		saveConfiguration();
+	}
+}
+
+void setup_ota() {
 	//Send OTA events to the browser
 	ArduinoOTA.onStart([]() {
 		Serial.println("Start");  //  "Начало OTA-апдейта"
@@ -141,8 +159,10 @@ void setup(){
 
 	ArduinoOTA.setHostname(config["hostname"].as<char*>());
 	ArduinoOTA.begin();
+}
 
-	// DDNS
+void setup_upnp() {
+		// DDNS
 	EasyDDNS.service(config["ddns"]["provider"].as<String>());
 	EasyDDNS.client(
 		config["ddns"]["domain"].as<String>(),
@@ -152,10 +172,10 @@ void setup(){
 
 	// UPnP for HTTP
 	tinyUPnP.addPortMappingConfig(
-		WiFi.localIP(), 
+		WiFi.localIP(),
 		config["upnp"]["localport"].as<int>(),
-		RULE_PROTOCOL_TCP, 
-		config["upnp"]["lease"].as<int>(), 
+		RULE_PROTOCOL_TCP,
+		config["upnp"]["lease"].as<int>(),
 		config["upnp"]["name"].as<String>()
 	);
 
@@ -163,8 +183,8 @@ void setup(){
 	tinyUPnP.addPortMappingConfig(
 		WiFi.localIP(),
 		8266,                                    // TODO: default OTA port hardcoded
-		RULE_PROTOCOL_TCP, 
-		config["upnp"]["lease"].as<int>(), 
+		RULE_PROTOCOL_TCP,
+		config["upnp"]["lease"].as<int>(),
 		config["upnp"]["name"].as<String>() + "OTA"
 	);
 
@@ -172,7 +192,7 @@ void setup(){
 	while (!portMappingAdded) {
 		portMappingAdded = tinyUPnP.commitPortMappings();
 		Serial.println("");
-	
+
 		if (!portMappingAdded) {
 			// for debugging, you can see this in your router too under forwarding or UPnP
 			tinyUPnP.printAllPortMappings();
@@ -180,8 +200,33 @@ void setup(){
 			delay(30000);  // 30 seconds before trying again
 		}
 	}
-  
-  Serial.println("UPnP done");
+
+	Serial.println("UPnP done");
+}
+
+void setup(){
+
+	// Setup debug port
+	Serial.begin(74880);
+	Serial.setDebugOutput(true);
+
+	// Mount FS
+	LittleFS.begin();
+
+	// Load configuration from file
+	loadConfiguration();
+
+	// Stepper
+	Stepper.init(14, 12, 13, 15, config["stepper"]["spr"].as<int>(), config["stepper"]["rpm"].as<int>());
+
+	// Setup wifi connection
+	setup_wifi();
+
+	// Setup OTA
+	setup_ota();
+
+	// Setup UPnP
+//	setup_upnp();
 
 	// HTTP Server
 	MDNS.addService("http", "tcp", 80);
@@ -235,7 +280,7 @@ void setup(){
 	});
 
 	server.on("/api", HTTP_GET | HTTP_POST, [](AsyncWebServerRequest *request){
-		if (!request->authenticate(config["auth"]["user"].as<char*>(), config["auth"]["pass"].as<char*>())) 
+		if (!request->authenticate(config["auth"]["user"].as<char*>(), config["auth"]["pass"].as<char*>()))
 			return request->requestAuthentication();
 
 		StaticJsonDocument<2000> doc;
@@ -272,54 +317,43 @@ void setup(){
 				for (int i = 0; i < n; ++i) {
 					JsonObject obj = arr.createNestedObject();
 					obj["ssid"]    = WiFi.SSID(i);
-					obj["bssid"]   = WiFi.BSSIDstr(i);
 					obj["rssi"]    = WiFi.RSSI(i);
 					obj["channel"] = WiFi.channel(i);
 					obj["secure"]  = WiFi.encryptionType(i);
-					obj["hidden"]  = WiFi.isHidden(i);
 				}
 
 				WiFi.scanDelete();
 				if (WiFi.scanComplete() == -2) {
 					WiFi.scanNetworks(true);
 				}
-				
+
 				doc["result"] = "Ok";
 			}
 
 		} else if (command == "save") {
+			if (!request->hasParam("ssid")) {
+				doc["result"]    = "Fail";
+				doc["error_msg"] = "'ssid' must be difined.";
+			} else if (!request->hasParam("pass")) {
+				doc["result"]    = "Fail";
+				doc["error_msg"] = "'pass' must be difined.";
+			} else if (request->getParam("ssid")->value() == "") {
+				doc["result"]    = "Fail";
+				doc["error_msg"] = "'ssid' is empty.";
+			} else {
+				doc["result"]    = "Ok";
+				config["wifi"]["new_ssid"]  = request->arg("ssid");
+				config["wifi"]["new_pass"]  = request->arg("pass");
+				saveConfiguration();
+			}
 
-
-/*
-
-		if (!request->hasParam("ssid")) {
-			doc["result"]    = "Fail";
-			doc["error_msg"] = "'ssid' must be difined.";
-		} else if (!request->hasParam("pass")) {
-			doc["result"]    = "Fail";
-			doc["error_msg"] = "'pass' must be difined.";
-		} else if (request->getParam("ssid")->value() == "") {
-			doc["result"]    = "Fail";
-			doc["error_msg"] = "'ssid' is empty.";
-		} else {
-			doc["result"]    = "Ok";
-			config.wifi.ssid = request->getParam("ssid")->value();
-			config.wifi.pass = request->getParam("pass")->value();
-			Serial.println("New SSID: " + config.wifi.ssid);
-			Serial.println("New PASS: " + config.wifi.pass);
-			saveConfiguration();
-
-		}
-			*/
-			
-			;
 		} else if (command == "load") {
 
 			Serial.print("Mode: ");
 			Serial.println(request->arg("mode"));
 
 			LoadMode mode = modeFromString(request->arg("mode"));
-			
+
 			doc["result"] = "Ok";
 
 			if (mode == LoadMode::status) {
@@ -335,7 +369,7 @@ void setup(){
 			if (mode == LoadMode::config) {
 				doc["config"] = config;
 			}
-			
+
 		} else if (command == "stepper") {
 
 			// Check if parameters exists
@@ -363,10 +397,10 @@ void setup(){
 						doc["msg"] = "The 'mode' parameter has an invalid value.";
 					}
 				}
-				
+
 			}
 		}
-		
+
 		String json;
 		serializeJson(doc, json);
 		request->send(200, "application/json", json);
